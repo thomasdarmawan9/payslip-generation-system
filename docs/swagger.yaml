@@ -1,0 +1,166 @@
+definitions:
+  auth.LoginUserRequest:
+    properties:
+      email:
+        type: string
+      password:
+        minLength: 6
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  auth.LoginUserResponse:
+    properties:
+      accessToken:
+        type: string
+      user:
+        $ref: '#/definitions/auth.UserResponse'
+    type: object
+  auth.RegisterUserRequest:
+    properties:
+      age:
+        type: integer
+      bio:
+        type: string
+      email:
+        type: string
+      first_name:
+        type: string
+      google_id:
+        type: string
+      interests:
+        example:
+        - coding
+        - reading
+        - travel
+        items:
+          type: string
+        type: array
+      is_profile_complete:
+        type: boolean
+      last_name:
+        type: string
+      location:
+        type: string
+      password:
+        minLength: 6
+        type: string
+      profile_image_url:
+        type: string
+    required:
+    - email
+    - first_name
+    - password
+    type: object
+  auth.RegisterUserResponse:
+    properties:
+      data:
+        $ref: '#/definitions/auth.UserResponse'
+    type: object
+  auth.UserResponse:
+    properties:
+      email:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  utils.Response-any:
+    properties:
+      data: {}
+      responseCode:
+        type: string
+      responseMessage:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /health-check:
+    get:
+      consumes:
+      - application/json
+      description: Returns the health status of the service
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Health Check
+      tags:
+      - Health
+  /v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Login user with email and password
+      parameters:
+      - description: Login User Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.LoginUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.LoginUserResponse'
+        "400":
+          description: Error response
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+        "401":
+          description: Error response
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+        "500":
+          description: Error response
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+      summary: Login User
+      tags:
+      - User
+  /v1/auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Register new user with required fields
+      parameters:
+      - description: Register User Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.RegisterUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/auth.RegisterUserResponse'
+        "400":
+          description: Error response
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+        "409":
+          description: Error response
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+        "500":
+          description: Error response
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+      summary: Register User
+      tags:
+      - User
+swagger: "2.0"
