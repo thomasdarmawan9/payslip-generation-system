@@ -28,7 +28,7 @@ APP_MODE=dev go run main.go wire_gen.go
 ```
 
 Swagger docs available at:  
-👉 [http://localhost:8080/swagger/index.html](http://localhost:8080/swagger/index.html)
+👉 [http://localhost:9898/swagger/index.html]
 
 ## DB Schema
 The service uses **GORM AutoMigrate** to create required tables:
