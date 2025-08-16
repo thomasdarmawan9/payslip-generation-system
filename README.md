@@ -1,4 +1,4 @@
-# Sidekick Backend
+# Payslip Backend
 
 ## Prerequisites
 - Go 1.21+
@@ -10,6 +10,8 @@
 git clone <repo>
 cd payslip-generation-system
 go mod tidy
+wire
+swag init
 go run main.go
 ```
 
