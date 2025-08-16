@@ -14,6 +14,7 @@ const (
 	ErrUnauthorized     = "Unauthorized"
 	NotFoundError       = "Not Found"
 	ConflictError       = "Conflict"
+	ErrForbidden        = "Forbidden"
 )
 
 var (
@@ -25,6 +26,7 @@ var (
 		ErrUnauthorized:     "01",
 		NotFoundError:       "03",
 		ConflictError:       "04",
+		ErrForbidden:        "05",
 	}
 
 	ErrorMapMessage = map[string]string{
@@ -35,6 +37,7 @@ var (
 		ErrUnauthorized:     "Unauthorized",
 		NotFoundError:       "Data tidak ditemukan",
 		ConflictError:       "Data sudah ada, Reason: %v",
+		ErrForbidden:        "Forbidden %v",
 	}
 
 	ErrorMapHttpCode = map[string]int{
@@ -45,5 +48,6 @@ var (
 		ErrUnauthorized:     http.StatusUnauthorized,
 		NotFoundError:       http.StatusNotFound,
 		ConflictError:       http.StatusConflict,
+		ErrForbidden:        http.StatusForbidden,
 	}
 )

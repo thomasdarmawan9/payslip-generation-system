@@ -25,7 +25,7 @@ envLib:
 
 databaseConfig:
   DBMysqlConfig:
-    mysql: "root:@tcp(127.0.0.1:3306)/invoice?parseTime=true&loc=Asia%2FJakarta"
+    mysql: "root:@tcp(127.0.0.1:3306)/payslip-generation-system?parseTime=true&loc=Asia%2FJakarta"
   DBPostgresConfig:
     postgres: "postgres://postgres:123456@localhost:5432/payslip-generation-system"
   enableAutoMigration: true

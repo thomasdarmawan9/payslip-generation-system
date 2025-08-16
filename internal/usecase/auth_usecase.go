@@ -127,8 +127,8 @@ func (u *usecase) LoginUser(ctx *gin.Context, email, password string) (*model.Us
 	return user, nil
 }
 
-func (u *usecase) GenerateToken(userID uint, name string) (string, error) {
-	token, err := GenerateToken(userID, name)
+func (u *usecase) GenerateToken(userID uint, name, role string) (string, error) {
+	token, err := GenerateToken(userID, name, role)
 	if err != nil {
 		u.log.Error(log.LogData{
 			Err:         err,
@@ -145,7 +145,7 @@ func (u *usecase) GenerateToken(userID uint, name string) (string, error) {
 
 var jwtSecret = []byte("A7M+TXRMxdz0N3nFLjGaxVKgkELowtbxWipS+IFZkVE=") // Ganti dengan env di production
 
-func GenerateToken(userID uint, name string) (string, error) {
+func GenerateToken(userID uint, name, role string) (string, error) {
 	// Define token expiration (e.g., 24 hours)
 	expirationTime := time.Now().Add(24 * time.Hour)
 
@@ -153,6 +153,7 @@ func GenerateToken(userID uint, name string) (string, error) {
 	claims := jwt.MapClaims{
 		"user_id": userID,
 		"name":    name,
+		"role":    role,
 		"exp":     expirationTime.Unix(),
 		"iat":     time.Now().Unix(),
 	}

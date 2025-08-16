@@ -92,8 +92,9 @@ func (h *Handler) LoginUserHandler(c *gin.Context) error {
 	}
 
 	FullName := user.FirstName + " " + user.LastName
+	role := user.Role
 
-	token, err := h.usecase.GenerateToken(user.ID, FullName)
+	token, err := h.usecase.GenerateToken(user.ID, FullName, role)
 	if err != nil {
 		h.log.Error(log.LogData{
 			Err:         err,

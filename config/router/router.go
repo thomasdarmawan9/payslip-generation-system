@@ -3,19 +3,19 @@ package router
 import (
 	"context"
 	"net/http"
-
-	// authmidware "payslip-generation-system/internal/middleware"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+
+	authmidware "payslip-generation-system/internal/middleware"
 )
 
 func (r *Route) SetupRoute(router *gin.Engine) {
 	// Health check
 	router.GET("/health-check", healthCheck)
 
-	// CORS setup
+	// CORS
 	configCors := cors.DefaultConfig()
 	configCors.AllowOrigins = r.Cfg.Cors.AllowOrigins
 	configCors.AllowHeaders = r.Cfg.Cors.AllowHeaders
@@ -23,49 +23,55 @@ func (r *Route) SetupRoute(router *gin.Engine) {
 	configCors.AllowCredentials = r.Cfg.Cors.AllowCredentials
 	router.Use(cors.New(configCors))
 
-	// V1 API group
+	// V1
 	v1 := router.Group("/v1")
 
-	// Auth Route group
+	// Public auth
 	auth := v1.Group("/auth")
-
 	auth.POST("/register", r.processTimeout(WrapWithErrorHandler(r.handler.RegisterUserHandler), 5*time.Second))
 	auth.POST("/login", r.processTimeout(WrapWithErrorHandler(r.handler.LoginUserHandler), 5*time.Second))
 
-	// Invoice route group
-	// invoice := v1.Group("/invoices")
+	// Protected (JWT) — apply middleware.Auth
+	protected := v1.Group("")
+	authmidware.New(protected, r.Cfg, r.Log) // ini memasang AuthJwt untuk semua route di bawahnya
 
-	// Middleware for authentication
-	// authmidware.New(invoice, *r.Cfg, r.Log)
+	// ADMIN only group
+	admin := protected.Group("")
+	admin.Use(RequireAdmin()) // helper kecil di bawah
+	// contoh endpoint admin (buat period payroll)
+	admin.POST("/payroll/periods", r.processTimeout(WrapWithErrorHandler(r.handler.CreateAttendancePeriodHandler), 10*time.Second))
+
+	// USER or ADMIN
+	user := protected.Group("")
+	user.Use(RequireUserOrAdmin())
+	// contoh endpoint submit attendance
+	user.POST("/attendance/submit", r.processTimeout(WrapWithErrorHandler(r.handler.SubmitAttendanceHandler), 10*time.Second))
+	user.POST("/overtime/submit", r.processTimeout(WrapWithErrorHandler(r.handler.SubmitOvertimeHandler), 10*time.Second))
+	user.POST("/reimbursements", r.processTimeout(WrapWithErrorHandler(r.handler.CreateReimbursementHandler), 10*time.Second))
 }
 
-// healthCheck returns the health status of the service.
-// @Summary Health Check
-// @Description Returns the health status of the service
-// @Tags Health
-// @Accept json
-// @Produce json
-// @Success 200 {object} map[string]string
-// @Router /health-check [get]
+// Health
 func healthCheck(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"status":  "UP",
-		"message": "Service is running",
-	})
+	c.JSON(http.StatusOK, gin.H{"status": "UP", "message": "Service is running"})
 }
 
+// Error wrapper
 func WrapWithErrorHandler(fn func(*gin.Context) error) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if err := fn(c); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"responseCode":    "5000100",
-				"responseMessage": err.Error(),
-			})
+			// kalau handler sudah nulis response, jangan double-write.
+			if !c.IsAborted() {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"responseCode":    "5000100",
+					"responseMessage": err.Error(),
+				})
+				c.Abort()
+			}
 		}
 	}
 }
 
-// processTimeout wraps a gin.HandlerFunc with a context timeout.
+// Timeout wrapper — versi lebih aman
 func (r *Route) processTimeout(handler gin.HandlerFunc, duration time.Duration) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx, cancel := context.WithTimeout(c.Request.Context(), duration)
@@ -73,20 +79,48 @@ func (r *Route) processTimeout(handler gin.HandlerFunc, duration time.Duration) 
 
 		c.Request = c.Request.WithContext(ctx)
 
-		processDone := make(chan struct{})
+		done := make(chan struct{})
+
+		cc := c.Copy()
 		go func() {
-			handler(c)
-			processDone <- struct{}{}
+			handler(cc)
+			close(done)
 		}()
 
 		select {
 		case <-ctx.Done():
-			c.JSON(http.StatusRequestTimeout, gin.H{
-				"responseCode":    "4080100",
-				"responseMessage": "Request Process Timeout",
-			})
-		case <-processDone:
-			// success
+			if !c.IsAborted() {
+				c.AbortWithStatusJSON(http.StatusRequestTimeout, gin.H{
+					"responseCode":    "4080100",
+					"responseMessage": "Request Process Timeout",
+				})
+			}
+		case <-done:
 		}
+	}
+}
+
+func RequireAdmin() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if role := c.GetString("role"); role != "admin" {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+				"responseCode":    "4030100",
+				"responseMessage": "admin only",
+			})
+			return
+		}
+		c.Next()
+	}
+}
+func RequireUserOrAdmin() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if role := c.GetString("role"); role != "user" && role != "admin" {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+				"responseCode":    "4030101",
+				"responseMessage": "forbidden",
+			})
+			return
+		}
+		c.Next()
 	}
 }

@@ -17,32 +17,38 @@ import (
 	"github.com/google/wire"
 )
 
+// Config & Logger
 var Configs = wire.NewSet(
 	config.ProvideConfig,
 )
-
 var LoggerSet = wire.NewSet(
 	log.ProvideLogger,
 )
 
+// Infra (DB, dsb)
 var InfraSet = wire.NewSet(
 	infra.ProvideInfra,
+	wire.FieldsOf(new(*infra.Infra), "DB"),
 )
 
+// Repositories dasar yang di-inject ke usecase
 var RepoSet = wire.NewSet(
 	auth.ProvideAuthRepo,
 	tx.ProvideTxManager,
 )
 
+// Domain layer
 var InternalDomain = wire.NewSet(
 	RepoSet,
 	usecase.ProvideUsc,
 )
 
+// Handlers
 var Handler = wire.NewSet(
 	handler.ProvideHandler,
 )
 
+// Server (router + transport)
 var Server = wire.NewSet(
 	Handler,
 	router.ProvideRoute,
@@ -55,7 +61,7 @@ func ServerApp() *transport.HTTP {
 		InfraSet,
 		LoggerSet,
 		InternalDomain,
-		Server)
-
+		Server,
+	)
 	return &transport.HTTP{}
 }

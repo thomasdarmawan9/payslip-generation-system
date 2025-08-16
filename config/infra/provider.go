@@ -31,7 +31,11 @@ func ProvideInfra(cfg *config.Config, logger *log.LogCustom) *Infra {
 
 	if cfg.DBConfig.EnableAutoMigration {
 		// taruh semua migrasi model di sini
-		if err := infra.DB.AutoMigrate(&model.User{}); err != nil {
+		if err := infra.DB.AutoMigrate(
+			&model.AttendancePeriod{},
+			&model.Attendance{},
+			&model.Overtime{},
+			&model.Reimbursement{}); err != nil {
 			logger.Error(log.LogData{
 				Err:         err,
 				Description: "database migration failed",

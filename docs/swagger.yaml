@@ -1,4 +1,47 @@
 definitions:
+  attendance.SubmitAttendanceRequest:
+    properties:
+      date:
+        description: Optional, default = today (WIB). Format YYYY-MM-DD
+        type: string
+    type: object
+  attendance.SubmitAttendanceResponse:
+    properties:
+      date:
+        type: string
+      id:
+        type: integer
+      status:
+        description: '"created" atau "already_exists"'
+        type: string
+      user_id:
+        type: integer
+    type: object
+  attendance_period.CreatePeriodRequest:
+    properties:
+      end_date:
+        type: string
+      name:
+        description: optional
+        type: string
+      start_date:
+        type: string
+    required:
+    - end_date
+    - start_date
+    type: object
+  attendance_period.PeriodResponse:
+    properties:
+      end_date:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      start_date:
+        description: YYYY-MM-DD
+        type: string
+    type: object
   auth.LoginUserRequest:
     properties:
       email:
@@ -67,6 +110,58 @@ definitions:
       name:
         type: string
     type: object
+  overtime.SubmitOvertimeRequest:
+    properties:
+      date:
+        description: default = today (WIB), format YYYY-MM-DD
+        type: string
+      hours:
+        maximum: 3
+        type: number
+    required:
+    - hours
+    type: object
+  overtime.SubmitOvertimeResponse:
+    properties:
+      date:
+        type: string
+      hours:
+        description: string biar rapi saat format (2 desimal)
+        type: string
+      id:
+        type: integer
+      status:
+        description: created | already_exists
+        type: string
+      user_id:
+        type: integer
+    type: object
+  reimbursement.CreateReimbursementRequest:
+    properties:
+      amount:
+        type: number
+      date:
+        description: default = today (WIB), format YYYY-MM-DD
+        type: string
+      description:
+        maxLength: 255
+        type: string
+    required:
+    - amount
+    type: object
+  reimbursement.ReimbursementResponse:
+    properties:
+      amount:
+        type: string
+      date:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      user_id:
+        type: integer
+    type: object
   utils.Response-any:
     properties:
       data: {}
@@ -78,23 +173,51 @@ definitions:
 info:
   contact: {}
 paths:
-  /health-check:
-    get:
+  /v1/attendance/submit:
+    post:
       consumes:
       - application/json
-      description: Returns the health status of the service
+      description: Users can submit one attendance per day. Weekend submissions are
+        rejected. If already submitted for the same day, response will indicate "already_exists".
+      parameters:
+      - description: Submit Attendance Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/attendance.SubmitAttendanceRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Health Check
+            $ref: '#/definitions/attendance.SubmitAttendanceResponse'
+        "400":
+          description: Invalid request / weekend not allowed
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+        "408":
+          description: Request Process Timeout
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+      security:
+      - BearerAuth: []
+      summary: Submit attendance (weekday only)
       tags:
-      - Health
+      - Attendance
   /v1/auth/login:
     post:
       consumes:
@@ -163,4 +286,138 @@ paths:
       summary: Register User
       tags:
       - User
+  /v1/overtime/submit:
+    post:
+      consumes:
+      - application/json
+      description: Submit overtime hours (<= 3h). Only allowed after 17:00 WIB if
+        submitting for today. Weekend allowed.
+      parameters:
+      - description: Submit Overtime Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/overtime.SubmitOvertimeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/overtime.SubmitOvertimeResponse'
+        "400":
+          description: Invalid request / hours > 3 / before 17:00
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+        "408":
+          description: Request Process Timeout
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+      security:
+      - BearerAuth: []
+      summary: Submit overtime
+      tags:
+      - Overtime
+  /v1/payroll/periods:
+    post:
+      consumes:
+      - application/json
+      description: Admin membuat periode payroll (tidak boleh overlap, end_date >=
+        start_date). Tanggal format YYYY-MM-DD.
+      parameters:
+      - description: Create Payroll Period Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/attendance_period.CreatePeriodRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/attendance_period.PeriodResponse'
+        "400":
+          description: Invalid request body / invalid dates / overlapping period
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+        "403":
+          description: Admin only
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+        "408":
+          description: Request Process Timeout
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+      security:
+      - BearerAuth: []
+      summary: Create payroll attendance period
+      tags:
+      - Payroll
+  /v1/reimbursements:
+    post:
+      consumes:
+      - application/json
+      description: Create a reimbursement with amount and optional description.
+      parameters:
+      - description: Create Reimbursement Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/reimbursement.CreateReimbursementRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/reimbursement.ReimbursementResponse'
+        "400":
+          description: Invalid request / amount <= 0
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+        "408":
+          description: Request Process Timeout
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+      security:
+      - BearerAuth: []
+      summary: Create reimbursement
+      tags:
+      - Reimbursement
 swagger: "2.0"

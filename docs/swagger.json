@@ -4,9 +4,14 @@
         "contact": {}
     },
     "paths": {
-        "/health-check": {
-            "get": {
-                "description": "Returns the health status of the service",
+        "/v1/attendance/submit": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Users can submit one attendance per day. Weekend submissions are rejected. If already submitted for the same day, response will indicate \"already_exists\".",
                 "consumes": [
                     "application/json"
                 ],
@@ -14,17 +19,55 @@
                     "application/json"
                 ],
                 "tags": [
-                    "Health"
+                    "Attendance"
                 ],
-                "summary": "Health Check",
+                "summary": "Submit attendance (weekday only)",
+                "parameters": [
+                    {
+                        "description": "Submit Attendance Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/attendance.SubmitAttendanceRequest"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/attendance.SubmitAttendanceResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request / weekend not allowed",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response-any"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response-any"
+                        }
+                    },
+                    "408": {
+                        "description": "Request Process Timeout",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response-any"
                         }
                     }
                 }
@@ -133,9 +176,280 @@
                     }
                 }
             }
+        },
+        "/v1/overtime/submit": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Submit overtime hours (\u003c= 3h). Only allowed after 17:00 WIB if submitting for today. Weekend allowed.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Overtime"
+                ],
+                "summary": "Submit overtime",
+                "parameters": [
+                    {
+                        "description": "Submit Overtime Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/overtime.SubmitOvertimeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/overtime.SubmitOvertimeResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request / hours \u003e 3 / before 17:00",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response-any"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response-any"
+                        }
+                    },
+                    "408": {
+                        "description": "Request Process Timeout",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/payroll/periods": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Admin membuat periode payroll (tidak boleh overlap, end_date \u003e= start_date). Tanggal format YYYY-MM-DD.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Payroll"
+                ],
+                "summary": "Create payroll attendance period",
+                "parameters": [
+                    {
+                        "description": "Create Payroll Period Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/attendance_period.CreatePeriodRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/attendance_period.PeriodResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body / invalid dates / overlapping period",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response-any"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Admin only",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response-any"
+                        }
+                    },
+                    "408": {
+                        "description": "Request Process Timeout",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/reimbursements": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a reimbursement with amount and optional description.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reimbursement"
+                ],
+                "summary": "Create reimbursement",
+                "parameters": [
+                    {
+                        "description": "Create Reimbursement Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/reimbursement.CreateReimbursementRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/reimbursement.ReimbursementResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request / amount \u003c= 0",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response-any"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response-any"
+                        }
+                    },
+                    "408": {
+                        "description": "Request Process Timeout",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response-any"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "attendance.SubmitAttendanceRequest": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "description": "Optional, default = today (WIB). Format YYYY-MM-DD",
+                    "type": "string"
+                }
+            }
+        },
+        "attendance.SubmitAttendanceResponse": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "status": {
+                    "description": "\"created\" atau \"already_exists\"",
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "attendance_period.CreatePeriodRequest": {
+            "type": "object",
+            "required": [
+                "end_date",
+                "start_date"
+            ],
+            "properties": {
+                "end_date": {
+                    "type": "string"
+                },
+                "name": {
+                    "description": "optional",
+                    "type": "string"
+                },
+                "start_date": {
+                    "type": "string"
+                }
+            }
+        },
+        "attendance_period.PeriodResponse": {
+            "type": "object",
+            "properties": {
+                "end_date": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "start_date": {
+                    "description": "YYYY-MM-DD",
+                    "type": "string"
+                }
+            }
+        },
         "auth.LoginUserRequest": {
             "type": "object",
             "required": [
@@ -234,6 +548,83 @@
                 },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "overtime.SubmitOvertimeRequest": {
+            "type": "object",
+            "required": [
+                "hours"
+            ],
+            "properties": {
+                "date": {
+                    "description": "default = today (WIB), format YYYY-MM-DD",
+                    "type": "string"
+                },
+                "hours": {
+                    "type": "number",
+                    "maximum": 3
+                }
+            }
+        },
+        "overtime.SubmitOvertimeResponse": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "hours": {
+                    "description": "string biar rapi saat format (2 desimal)",
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "status": {
+                    "description": "created | already_exists",
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "reimbursement.CreateReimbursementRequest": {
+            "type": "object",
+            "required": [
+                "amount"
+            ],
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "date": {
+                    "description": "default = today (WIB), format YYYY-MM-DD",
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string",
+                    "maxLength": 255
+                }
+            }
+        },
+        "reimbursement.ReimbursementResponse": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "user_id": {
+                    "type": "integer"
                 }
             }
         },
