@@ -47,15 +47,50 @@ Swagger:
 ## Configuration
 Typical envs (adjust to your config):
 ```
-APP_MODE=dev
-HTTP_PORT=9898
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=payslip
-DB_USER=postgres
-DB_PASSWORD=postgres
-JWT_SECRET=<your-strong-secret>
-CORS_ALLOW_ORIGINS=["http://localhost:3000"]
+appEnvMode:
+  mode: "dev"
+  testPathPrefix: "../../../"
+  debugMode: false
+  ginMode: "debug"
+  isPrettyLog: true
+  port: 9898 
+  host: "localhost"
+
+server:
+  shutdown:
+    cleanup_period_seconds: "3"
+    grace_period_seconds: "4"
+  timeout:
+    duration: "10s"
+
+envLib:
+  envFile: "env/env_dev.yml"
+  envLib:
+    name: "payslip-generation-system"
+    host: "localhost"
+    port: 9898
+    version: "v1"
+  envMode: "local"
+
+databaseConfig:
+  DBMysqlConfig:
+    mysql: "root:@tcp(127.0.0.1:3306)/payslip-generation-system?parseTime=true&loc=Asia%2FJakarta"
+  DBPostgresConfig:
+    postgres: "postgres://postgres:123456@localhost:5432/payslip-generation-system"
+  enableAutoMigration: true
+
+logConfig:
+  level: "info"
+  format: "pretty"
+  outputPath: "stdout"
+
+cors:
+  allowOrigins:
+    - "http://localhost:3000"
+    - "http://localhost:9898"
+  allowMethods: ["GET", "POST", "PUT", "DELETE"]
+  allowHeaders: ["Origin", "Content-Type", "Authorization"]
+  allowCredentials: true
 ```
 
 ---
