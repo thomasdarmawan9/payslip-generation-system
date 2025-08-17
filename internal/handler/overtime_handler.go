@@ -19,7 +19,7 @@ import (
 // @Tags         Overtime
 // @Accept       json
 // @Produce      json
-// @Security     BearerAuth
+// @Param Authorization header string true "Bearer JWT Token"
 // @Param        request  body      otDTO.SubmitOvertimeRequest  true  "Submit Overtime Request"
 // @Success      200      {object}  otDTO.SubmitOvertimeResponse
 // @Failure      400      {object}  utils.Response[any] "Invalid request / hours > 3 / before 17:00"

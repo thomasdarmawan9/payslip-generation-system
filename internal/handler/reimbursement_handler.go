@@ -19,7 +19,7 @@ import (
 // @Tags         Reimbursement
 // @Accept       json
 // @Produce      json
-// @Security     BearerAuth
+// @Param Authorization header string true "Bearer JWT Token"
 // @Param        request  body      rbDTO.CreateReimbursementRequest  true  "Create Reimbursement Request"
 // @Success      201      {object}  rbDTO.ReimbursementResponse
 // @Failure      400      {object}  utils.Response[any] "Invalid request / amount <= 0"

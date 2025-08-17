@@ -16,7 +16,7 @@ import (
 // @Tags         Payroll
 // @Accept       json
 // @Produce      json
-// @Security     BearerAuth
+// @Param Authorization header string true "Bearer JWT Token"
 // @Param        request  body      apDTO.CreatePeriodRequest  true  "Create Payroll Period Request"
 // @Success      201      {object}  apDTO.PeriodResponse
 // @Failure      400      {object}  utils.Response[any] "Invalid request body / invalid dates / overlapping period"

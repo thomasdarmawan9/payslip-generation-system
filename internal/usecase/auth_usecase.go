@@ -76,6 +76,8 @@ func (u *usecase) RegisterUser(ctx *gin.Context, req authDTO.RegisterUserRequest
 		Bio:               req.Bio,
 		Location:          req.Location,
 		Interests:         req.Interests, // pq.StringArray -> text[]
+		Role:              req.Role,
+		Salary:            req.Salary,
 		IsProfileComplete: isComplete,
 		// CreatedAt/UpdatedAt by GORM
 	}

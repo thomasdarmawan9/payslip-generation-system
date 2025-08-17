@@ -53,9 +53,10 @@ func (h *Handler) RegisterUserHandler(c *gin.Context) error {
 
 	c.JSON(http.StatusCreated, authDTO.RegisterUserResponse{
 		Data: authDTO.UserResponse{
-			ID:    user.ID,
-			Name:  fullName,
-			Email: user.Email,
+			Name:   fullName,
+			Email:  user.Email,
+			Salary: user.Salary,
+			Role:   user.Role,
 		},
 	})
 	return nil
@@ -108,9 +109,10 @@ func (h *Handler) LoginUserHandler(c *gin.Context) error {
 	})
 	c.JSON(http.StatusOK, authDTO.LoginUserResponse{
 		User: authDTO.UserResponse{
-			ID:    user.ID,
-			Name:  FullName,
-			Email: user.Email,
+			Name:   FullName,
+			Email:  user.Email,
+			Salary: user.Salary,
+			Role:   role,
 		},
 		Token: token,
 	})

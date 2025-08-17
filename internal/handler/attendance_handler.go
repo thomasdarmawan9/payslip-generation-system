@@ -16,7 +16,7 @@ import (
 // @Tags         Attendance
 // @Accept       json
 // @Produce      json
-// @Security     BearerAuth
+// @Param 		 Authorization header string true "Bearer JWT Token"
 // @Param        request  body      atDTO.SubmitAttendanceRequest  true  "Submit Attendance Request"
 // @Success      200      {object}  atDTO.SubmitAttendanceResponse
 // @Failure      400      {object}  utils.Response[any] "Invalid request / weekend not allowed"

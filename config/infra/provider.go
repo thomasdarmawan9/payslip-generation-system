@@ -35,7 +35,10 @@ func ProvideInfra(cfg *config.Config, logger *log.LogCustom) *Infra {
 			&model.AttendancePeriod{},
 			&model.Attendance{},
 			&model.Overtime{},
-			&model.Reimbursement{}); err != nil {
+			&model.Reimbursement{},
+			&model.PayrollRun{},
+			&model.PayrollItem{},
+			&model.User{}); err != nil {
 			logger.Error(log.LogData{
 				Err:         err,
 				Description: "database migration failed",

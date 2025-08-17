@@ -22,6 +22,15 @@ func (u *usecase) SubmitOvertime(ctx *gin.Context, userID uint, dateStr string, 
 	loc := time.FixedZone("WIB", 7*3600)
 	var date time.Time
 	var err error
+
+	locked, err := u.payrollRepo.HasRunOnDate(ctx, date)
+	if err != nil {
+		return nil, false, utils.MakeError(errorUc.InternalServerError, "db error")
+	}
+	if locked {
+		return nil, false, utils.MakeError(errorUc.BadRequest, "payroll already run for this period; submissions are locked")
+	}
+
 	if dateStr == "" {
 		now := time.Now().In(loc)
 		date = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
@@ -70,6 +79,15 @@ func (u *usecase) CreateReimbursement(ctx *gin.Context, userID uint, dateStr str
 	loc := time.FixedZone("WIB", 7*3600)
 	var date time.Time
 	var err error
+
+	locked, err := u.payrollRepo.HasRunOnDate(ctx, date)
+	if err != nil {
+		return nil, utils.MakeError(errorUc.InternalServerError, "db error")
+	}
+	if locked {
+		return nil, utils.MakeError(errorUc.BadRequest, "payroll already run for this period; submissions are locked")
+	}
+
 	if dateStr == "" {
 		now := time.Now().In(loc)
 		date = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)

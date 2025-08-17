@@ -5,13 +5,15 @@ import (
 	"payslip-generation-system/internal/model"
 	atRepo "payslip-generation-system/internal/repository/attendance"
 	apRepo "payslip-generation-system/internal/repository/attendanceperiod"
-	otRepo "payslip-generation-system/internal/repository/overtime"
-	rbRepo "payslip-generation-system/internal/repository/reimbursement"
 	repositoryAuth "payslip-generation-system/internal/repository/auth"
+	otRepo "payslip-generation-system/internal/repository/overtime"
+	payRepo "payslip-generation-system/internal/repository/payroll"
+	rbRepo "payslip-generation-system/internal/repository/reimbursement"
 	repoTx "payslip-generation-system/internal/repository/tx"
 	"payslip-generation-system/pkg/log"
 
 	authDTO "payslip-generation-system/internal/dto/auth"
+	"payslip-generation-system/internal/dto/payslip"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -27,17 +29,21 @@ type IUsecase interface {
 
 	SubmitOvertime(ctx *gin.Context, userID uint, dateStr string, hours float64) (*model.Overtime, bool, error)
 	CreateReimbursement(ctx *gin.Context, userID uint, dateStr string, amount float64, description string) (*model.Reimbursement, error)
+
+	RunPayroll(ctx *gin.Context, periodID uint) (*model.PayrollRun, []*model.PayrollItem, error)
+	GeneratePayslip(ctx *gin.Context, userID, periodID uint) (*payslip.PayslipResponse, error)
 }
 
 type usecase struct {
-	cfg       *config.Config
-	log       *log.LogCustom
-	authRepo  repositoryAuth.IAuthRepo
-	txManager repoTx.TxManager
-	apRepo    apRepo.Repo
-	atRepo    atRepo.Repo
-	otRepo otRepo.Repo
-	rbRepo rbRepo.Repo
+	cfg         *config.Config
+	log         *log.LogCustom
+	authRepo    repositoryAuth.IAuthRepo
+	txManager   repoTx.TxManager
+	apRepo      apRepo.Repo
+	atRepo      atRepo.Repo
+	otRepo      otRepo.Repo
+	rbRepo      rbRepo.Repo
+	payrollRepo payRepo.Repo
 }
 
 func ProvideUsc(
@@ -58,5 +64,6 @@ func ProvideUsc(
 	u.atRepo = atRepo.New(db)
 	u.otRepo = otRepo.New(db)
 	u.rbRepo = rbRepo.New(db)
+	u.payrollRepo = payRepo.New(db)
 	return u
 }

@@ -65,6 +65,14 @@ func (u *usecase) SubmitAttendance(ctx *gin.Context, userID uint, dateStr string
 	// default ke "hari ini" (WIB)
 	var date time.Time
 	var err error
+	locked, err := u.payrollRepo.HasRunOnDate(ctx, date)
+	if err != nil {
+		return nil, false, utils.MakeError(errorUc.InternalServerError, "db error")
+	}
+	if locked {
+		return nil, false, utils.MakeError(errorUc.BadRequest, "payroll already run for this period; submissions are locked")
+	}
+
 	if dateStr == "" {
 		now := time.Now().In(time.FixedZone("WIB", 7*3600))
 		date = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())

@@ -6,9 +6,10 @@ type LoginUserResponse struct {
 }
 
 type UserResponse struct {
-	ID    uint   `json:"id"`
-	Name  string `json:"name"`
-	Email string `json:"email"`
+	Name   string  `json:"name"`
+	Email  string  `json:"email"`
+	Salary float64 `json:"salary"`
+	Role   string  `json:"role"`
 }
 
 type RegisterUserResponse struct {

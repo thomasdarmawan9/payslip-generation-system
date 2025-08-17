@@ -91,10 +91,19 @@ definitions:
         type: string
       profile_image_url:
         type: string
+      role:
+        enum:
+        - admin
+        - user
+        type: string
+      salary:
+        type: number
     required:
     - email
     - first_name
     - password
+    - role
+    - salary
     type: object
   auth.RegisterUserResponse:
     properties:
@@ -105,10 +114,12 @@ definitions:
     properties:
       email:
         type: string
-      id:
-        type: integer
       name:
         type: string
+      role:
+        type: string
+      salary:
+        type: number
     type: object
   overtime.SubmitOvertimeRequest:
     properties:
@@ -134,6 +145,99 @@ definitions:
         description: created | already_exists
         type: string
       user_id:
+        type: integer
+    type: object
+  payroll.PayrollItemSummary:
+    properties:
+      attendance_days:
+        type: integer
+      base_pay:
+        type: string
+      grand_total:
+        type: string
+      overtime_hours:
+        type: string
+      overtime_pay:
+        type: string
+      reimbursement_total:
+        type: string
+      snapshot_salary:
+        type: string
+      user_id:
+        type: integer
+      working_days:
+        type: integer
+    type: object
+  payroll.RunPayrollResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/payroll.PayrollItemSummary'
+        type: array
+      period_id:
+        type: integer
+      run_id:
+        type: integer
+    type: object
+  payslip.PayslipResponse:
+    properties:
+      attendance_days:
+        type: integer
+      attendance_hours:
+        type: integer
+      base_pay:
+        type: string
+      grand_total:
+        type: string
+      hourly_rate:
+        type: string
+      overtime_hours:
+        description: Overtime breakdown
+        type: string
+      overtime_multiplier:
+        description: "2.0"
+        type: number
+      overtime_pay:
+        type: string
+      period:
+        properties:
+          end_date:
+            type: string
+          id:
+            type: integer
+          name:
+            type: string
+          start_date:
+            type: string
+        type: object
+      reimbursement_sum:
+        type: string
+      reimbursements:
+        description: Reimbursements
+        items:
+          $ref: '#/definitions/payslip.ReimbursementLine'
+        type: array
+      salary_snapshot:
+        description: Totals
+        type: string
+      snapshot_used:
+        description: true jika payroll sudah run
+        type: boolean
+      working_days:
+        description: Breakdown attendance / base pay
+        type: integer
+      working_hours:
+        type: integer
+    type: object
+  payslip.ReimbursementLine:
+    properties:
+      amount:
+        type: string
+      date:
+        type: string
+      description:
+        type: string
+      id:
         type: integer
     type: object
   reimbursement.CreateReimbursementRequest:
@@ -180,6 +284,11 @@ paths:
       description: Users can submit one attendance per day. Weekend submissions are
         rejected. If already submitted for the same day, response will indicate "already_exists".
       parameters:
+      - description: Bearer JWT Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
       - description: Submit Attendance Request
         in: body
         name: request
@@ -213,8 +322,6 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/utils.Response-any'
-      security:
-      - BearerAuth: []
       summary: Submit attendance (weekday only)
       tags:
       - Attendance
@@ -293,6 +400,11 @@ paths:
       description: Submit overtime hours (<= 3h). Only allowed after 17:00 WIB if
         submitting for today. Weekend allowed.
       parameters:
+      - description: Bearer JWT Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
       - description: Submit Overtime Request
         in: body
         name: request
@@ -326,8 +438,6 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/utils.Response-any'
-      security:
-      - BearerAuth: []
       summary: Submit overtime
       tags:
       - Overtime
@@ -338,6 +448,11 @@ paths:
       description: Admin membuat periode payroll (tidak boleh overlap, end_date >=
         start_date). Tanggal format YYYY-MM-DD.
       parameters:
+      - description: Bearer JWT Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
       - description: Create Payroll Period Request
         in: body
         name: request
@@ -371,17 +486,114 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/utils.Response-any'
-      security:
-      - BearerAuth: []
       summary: Create payroll attendance period
       tags:
       - Payroll
+  /v1/payroll/periods/{period_id}/run:
+    post:
+      consumes:
+      - application/json
+      description: Processes payslips for the specified attendance period. After run,
+        submissions in that period won't affect payslip. Can only run once per period.
+      parameters:
+      - description: Bearer JWT Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Attendance Period ID
+        in: path
+        name: period_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/payroll.RunPayrollResponse'
+        "400":
+          description: Invalid period / already run / no working days
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+        "403":
+          description: Admin only
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+        "408":
+          description: Request Process Timeout
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+      summary: Run payroll for a period (admin only)
+      tags:
+      - Payroll
+  /v1/payslips/periods/{period_id}:
+    get:
+      consumes:
+      - application/json
+      description: Generates a payslip with attendance, overtime, reimbursements and
+        totals. If payroll already ran for the period, snapshot values are used.
+      parameters:
+      - description: Bearer JWT Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Attendance Period ID
+        in: path
+        name: period_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/payslip.PayslipResponse'
+        "400":
+          description: Invalid period / no working days
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+        "408":
+          description: Request Process Timeout
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.Response-any'
+      summary: Generate payslip for a period (employee)
+      tags:
+      - Payslip
   /v1/reimbursements:
     post:
       consumes:
       - application/json
       description: Create a reimbursement with amount and optional description.
       parameters:
+      - description: Bearer JWT Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
       - description: Create Reimbursement Request
         in: body
         name: request
@@ -415,8 +627,6 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/utils.Response-any'
-      security:
-      - BearerAuth: []
       summary: Create reimbursement
       tags:
       - Reimbursement

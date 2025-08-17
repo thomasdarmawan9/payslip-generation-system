@@ -17,11 +17,6 @@ const docTemplate = `{
     "paths": {
         "/v1/attendance/submit": {
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Users can submit one attendance per day. Weekend submissions are rejected. If already submitted for the same day, response will indicate \"already_exists\".",
                 "consumes": [
                     "application/json"
@@ -34,6 +29,13 @@ const docTemplate = `{
                 ],
                 "summary": "Submit attendance (weekday only)",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer JWT Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "description": "Submit Attendance Request",
                         "name": "request",
@@ -190,11 +192,6 @@ const docTemplate = `{
         },
         "/v1/overtime/submit": {
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Submit overtime hours (\u003c= 3h). Only allowed after 17:00 WIB if submitting for today. Weekend allowed.",
                 "consumes": [
                     "application/json"
@@ -207,6 +204,13 @@ const docTemplate = `{
                 ],
                 "summary": "Submit overtime",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer JWT Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "description": "Submit Overtime Request",
                         "name": "request",
@@ -259,11 +263,6 @@ const docTemplate = `{
         },
         "/v1/payroll/periods": {
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Admin membuat periode payroll (tidak boleh overlap, end_date \u003e= start_date). Tanggal format YYYY-MM-DD.",
                 "consumes": [
                     "application/json"
@@ -276,6 +275,13 @@ const docTemplate = `{
                 ],
                 "summary": "Create payroll attendance period",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer JWT Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "description": "Create Payroll Period Request",
                         "name": "request",
@@ -326,13 +332,146 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/reimbursements": {
+        "/v1/payroll/periods/{period_id}/run": {
             "post": {
-                "security": [
+                "description": "Processes payslips for the specified attendance period. After run, submissions in that period won't affect payslip. Can only run once per period.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Payroll"
+                ],
+                "summary": "Run payroll for a period (admin only)",
+                "parameters": [
                     {
-                        "BearerAuth": []
+                        "type": "string",
+                        "description": "Bearer JWT Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Attendance Period ID",
+                        "name": "period_id",
+                        "in": "path",
+                        "required": true
                     }
                 ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/payroll.RunPayrollResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid period / already run / no working days",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response-any"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Admin only",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response-any"
+                        }
+                    },
+                    "408": {
+                        "description": "Request Process Timeout",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/payslips/periods/{period_id}": {
+            "get": {
+                "description": "Generates a payslip with attendance, overtime, reimbursements and totals. If payroll already ran for the period, snapshot values are used.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Payslip"
+                ],
+                "summary": "Generate payslip for a period (employee)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer JWT Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Attendance Period ID",
+                        "name": "period_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/payslip.PayslipResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid period / no working days",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response-any"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response-any"
+                        }
+                    },
+                    "408": {
+                        "description": "Request Process Timeout",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/reimbursements": {
+            "post": {
                 "description": "Create a reimbursement with amount and optional description.",
                 "consumes": [
                     "application/json"
@@ -345,6 +484,13 @@ const docTemplate = `{
                 ],
                 "summary": "Create reimbursement",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer JWT Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "description": "Create Reimbursement Request",
                         "name": "request",
@@ -493,7 +639,9 @@ const docTemplate = `{
             "required": [
                 "email",
                 "first_name",
-                "password"
+                "password",
+                "role",
+                "salary"
             ],
             "properties": {
                 "age": {
@@ -537,6 +685,16 @@ const docTemplate = `{
                 },
                 "profile_image_url": {
                     "type": "string"
+                },
+                "role": {
+                    "type": "string",
+                    "enum": [
+                        "admin",
+                        "user"
+                    ]
+                },
+                "salary": {
+                    "type": "number"
                 }
             }
         },
@@ -554,11 +712,14 @@ const docTemplate = `{
                 "email": {
                     "type": "string"
                 },
-                "id": {
-                    "type": "integer"
-                },
                 "name": {
                     "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "salary": {
+                    "type": "number"
                 }
             }
         },
@@ -596,6 +757,145 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "payroll.PayrollItemSummary": {
+            "type": "object",
+            "properties": {
+                "attendance_days": {
+                    "type": "integer"
+                },
+                "base_pay": {
+                    "type": "string"
+                },
+                "grand_total": {
+                    "type": "string"
+                },
+                "overtime_hours": {
+                    "type": "string"
+                },
+                "overtime_pay": {
+                    "type": "string"
+                },
+                "reimbursement_total": {
+                    "type": "string"
+                },
+                "snapshot_salary": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                },
+                "working_days": {
+                    "type": "integer"
+                }
+            }
+        },
+        "payroll.RunPayrollResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/payroll.PayrollItemSummary"
+                    }
+                },
+                "period_id": {
+                    "type": "integer"
+                },
+                "run_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "payslip.PayslipResponse": {
+            "type": "object",
+            "properties": {
+                "attendance_days": {
+                    "type": "integer"
+                },
+                "attendance_hours": {
+                    "type": "integer"
+                },
+                "base_pay": {
+                    "type": "string"
+                },
+                "grand_total": {
+                    "type": "string"
+                },
+                "hourly_rate": {
+                    "type": "string"
+                },
+                "overtime_hours": {
+                    "description": "Overtime breakdown",
+                    "type": "string"
+                },
+                "overtime_multiplier": {
+                    "description": "2.0",
+                    "type": "number"
+                },
+                "overtime_pay": {
+                    "type": "string"
+                },
+                "period": {
+                    "type": "object",
+                    "properties": {
+                        "end_date": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "integer"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "start_date": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "reimbursement_sum": {
+                    "type": "string"
+                },
+                "reimbursements": {
+                    "description": "Reimbursements",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/payslip.ReimbursementLine"
+                    }
+                },
+                "salary_snapshot": {
+                    "description": "Totals",
+                    "type": "string"
+                },
+                "snapshot_used": {
+                    "description": "true jika payroll sudah run",
+                    "type": "boolean"
+                },
+                "working_days": {
+                    "description": "Breakdown attendance / base pay",
+                    "type": "integer"
+                },
+                "working_hours": {
+                    "type": "integer"
+                }
+            }
+        },
+        "payslip.ReimbursementLine": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
                     "type": "integer"
                 }
             }

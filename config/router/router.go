@@ -40,7 +40,7 @@ func (r *Route) SetupRoute(router *gin.Engine) {
 	admin.Use(RequireAdmin()) // helper kecil di bawah
 	// contoh endpoint admin (buat period payroll)
 	admin.POST("/payroll/periods", r.processTimeout(WrapWithErrorHandler(r.handler.CreateAttendancePeriodHandler), 10*time.Second))
-
+	admin.POST("/payroll/periods/:period_id/run", r.processTimeout(WrapWithErrorHandler(r.handler.RunPayrollHandler), 30*time.Second))
 	// USER or ADMIN
 	user := protected.Group("")
 	user.Use(RequireUserOrAdmin())
@@ -48,6 +48,9 @@ func (r *Route) SetupRoute(router *gin.Engine) {
 	user.POST("/attendance/submit", r.processTimeout(WrapWithErrorHandler(r.handler.SubmitAttendanceHandler), 10*time.Second))
 	user.POST("/overtime/submit", r.processTimeout(WrapWithErrorHandler(r.handler.SubmitOvertimeHandler), 10*time.Second))
 	user.POST("/reimbursements", r.processTimeout(WrapWithErrorHandler(r.handler.CreateReimbursementHandler), 10*time.Second))
+	user.GET("/payslips/periods/:period_id",
+		r.processTimeout(WrapWithErrorHandler(r.handler.GeneratePayslipHandler), 10*time.Second))
+
 }
 
 // Health
@@ -79,23 +82,20 @@ func (r *Route) processTimeout(handler gin.HandlerFunc, duration time.Duration) 
 
 		c.Request = c.Request.WithContext(ctx)
 
-		done := make(chan struct{})
-
-		cc := c.Copy()
+		processDone := make(chan struct{})
 		go func() {
-			handler(cc)
-			close(done)
+			handler(c)
+			processDone <- struct{}{}
 		}()
 
 		select {
 		case <-ctx.Done():
-			if !c.IsAborted() {
-				c.AbortWithStatusJSON(http.StatusRequestTimeout, gin.H{
-					"responseCode":    "4080100",
-					"responseMessage": "Request Process Timeout",
-				})
-			}
-		case <-done:
+			c.JSON(http.StatusRequestTimeout, gin.H{
+				"responseCode":    "4080100",
+				"responseMessage": "Request Process Timeout",
+			})
+		case <-processDone:
+			// success
 		}
 	}
 }

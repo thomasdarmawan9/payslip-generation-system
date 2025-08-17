@@ -6,6 +6,8 @@ type RegisterUserRequest struct {
 	Email             string         `json:"email" binding:"required,email"`
 	FirstName         string         `json:"first_name" binding:"required"`
 	LastName          string         `json:"last_name"`
+	Role              string         `json:"role" binding:"required,oneof=admin user"`
+	Salary            float64        `json:"salary" binding:"required,numeric"`
 	ProfileImageURL   string         `json:"profile_image_url"`
 	Password          string         `json:"password" binding:"required,min=6"`
 	GoogleID          string         `json:"google_id"`
