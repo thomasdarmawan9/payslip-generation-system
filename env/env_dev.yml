@@ -10,7 +10,7 @@ appEnvMode:
 server:
   shutdown:
     cleanup_period_seconds: "3"
-    grace_period_seconds: "4
+    grace_period_seconds: "4"
   timeout:
     duration: "10s"
 
