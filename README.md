@@ -99,6 +99,7 @@ cp .env.example .env
 set -a
 source .env
 set +a
+export JWT_SECRET="$(openssl rand -base64 32)"
 
 go mod download
 go run .
