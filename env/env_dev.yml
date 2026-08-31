@@ -4,13 +4,13 @@ appEnvMode:
   debugMode: false
   ginMode: "debug"
   isPrettyLog: true
-  port: 9898 
+  port: 9898
   host: "localhost"
 
 server:
   shutdown:
     cleanup_period_seconds: "3"
-    grace_period_seconds: "4"
+    grace_period_seconds: "4
   timeout:
     duration: "10s"
 
@@ -25,9 +25,9 @@ envLib:
 
 databaseConfig:
   DBMysqlConfig:
-    mysql: "root:@tcp(127.0.0.1:3306)/payslip-generation-system?parseTime=true&loc=Asia%2FJakarta"
+    mysql: ""
   DBPostgresConfig:
-    postgres: "postgres://postgres:123456@localhost:5432/payslip-generation-system"
+    postgres: ""
   enableAutoMigration: true
 
 logConfig:
