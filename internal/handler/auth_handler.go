@@ -36,7 +36,6 @@ func (h *Handler) RegisterUserHandler(c *gin.Context) error {
 
 	user, err := h.usecase.RegisterUser(c, req)
 	if err != nil {
-		// biarkan error dari usecase naik apa adanya agar status code (409/500) tetap sesuai
 		h.log.Error(log.LogData{
 			Err:         err,
 			Description: "Failed to register user",
@@ -48,7 +47,7 @@ func (h *Handler) RegisterUserHandler(c *gin.Context) error {
 
 	h.log.Info(log.LogData{
 		Description: "User registered successfully",
-		Response:    user,
+		Response:    user.Email,
 	})
 
 	c.JSON(http.StatusCreated, authDTO.RegisterUserResponse{
@@ -71,7 +70,7 @@ func (h *Handler) RegisterUserHandler(c *gin.Context) error {
 // @Param        request  body      authDTO.LoginUserRequest  true  "Login User Request"
 // @Success      200      {object}  authDTO.LoginUserResponse
 // @Failure      400      {object}  utils.Response[any] "Error response"
-// @Failure	  	 401      {object} 	utils.Response[any] "Error response"
+// @Failure      401      {object}  utils.Response[any] "Error response"
 // @Failure      500      {object}  utils.Response[any] "Error response"
 // @Router       /v1/auth/login [post]
 func (h *Handler) LoginUserHandler(c *gin.Context) error {
@@ -89,27 +88,27 @@ func (h *Handler) LoginUserHandler(c *gin.Context) error {
 			Err:         err,
 			Description: "Failed to login user",
 		})
-		return utils.MakeError(errorUc.InternalServerError, err.Error())
+		return err
 	}
 
-	FullName := user.FirstName + " " + user.LastName
+	fullName := user.FirstName + " " + user.LastName
 	role := user.Role
 
-	token, err := h.usecase.GenerateToken(user.ID, FullName, role)
+	token, err := h.usecase.GenerateToken(user.ID, fullName, role)
 	if err != nil {
 		h.log.Error(log.LogData{
 			Err:         err,
 			Description: "Failed to generate token",
 		})
-		return utils.MakeError(errorUc.InternalServerError, err.Error())
+		return err
 	}
 	h.log.Info(log.LogData{
 		Description: "User logged in successfully",
-		Response:    user,
+		Response:    user.Email,
 	})
 	c.JSON(http.StatusOK, authDTO.LoginUserResponse{
 		User: authDTO.UserResponse{
-			Name:   FullName,
+			Name:   fullName,
 			Email:  user.Email,
 			Salary: user.Salary,
 			Role:   role,
