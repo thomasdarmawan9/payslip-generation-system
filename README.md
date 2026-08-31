@@ -1,325 +1,175 @@
-# Payslip Backend
-Created by Thomas Darmawan
+# Payslip Generation System
 
-## Overview
-Backend service for a **Payslip Generation System**.
+[![Go CI](https://github.com/thomasdarmawan9/payslip-generation-system/actions/workflows/ci.yml/badge.svg)](https://github.com/thomasdarmawan9/payslip-generation-system/actions/workflows/ci.yml)
+![Go](https://img.shields.io/badge/Go-1.24.2-00ADD8?logo=go&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL- Relational%20Database-4169E1?logo=postgresql&logoColor=white)
 
-**Features**
-- **Auth**: Registration & login with **JWT**, roles: `admin`, `user`.
-- **Attendance Periods (Admin)**: Create non-overlapping payroll periods.
-- **Attendance (User/Admin)**: One submission per weekday; weekends **not allowed**.
-- **Overtime (User/Admin)**: ≤ **3 hours/day**, can be any day; **if today** then only **after 17:00 WIB**.
-- **Reimbursements (User/Admin)**: Amount + optional description; multiple per day allowed.
-- **Run Payroll (Admin)**: Process a period once; snapshots payslips. After run, new submissions inside that period are rejected.
-- **Generate Payslip (User/Admin)**: Get payslip for a period. Uses **snapshot** after payroll run; otherwise calculated **live**.
+A backend service for attendance, payroll processing, and payslip generation, built as a portfolio project with Go, Gin, GORM, PostgreSQL, JWT authentication, and Google Wire dependency injection.
 
----
+The system models a realistic payroll workflow: employees submit attendance, overtime, and reimbursements; an administrator runs payroll once per period; and payslips use immutable payroll snapshots after processing.
 
-## Prerequisites
-- **Go 1.21+**
-- **PostgreSQL**
-- **wire** (Google Wire) — DI codegen
-- **swag** (Swaggo) — Swagger codegen
+## Engineering highlights
 
-Optional but recommended:
-- `pgcrypto` PostgreSQL extension (for bcrypt password hashing)
+- Layered architecture: transport, handlers, use cases, repositories, and persistence.
+- JWT-based authentication with role-based access for `admin` and `user`.
+- Business-rule validation for weekdays, overtime limits, period overlap, and payroll locking.
+- Transactional payroll execution with one payroll run per attendance period.
+- Payslip snapshots so historical results do not change when employee data changes.
+- Use-case unit tests with repository and transaction mocks.
+- Swagger/OpenAPI documentation available during development.
+- Configuration through environment variables with safe local examples.
 
----
+## Architecture
 
-## Setup
-
-```bash
-git clone <repo>
-cd payslip-generation-system
-go mod tidy
-wire
-swag init
-APP_MODE=dev go run main.go wire_gen.go
+```mermaid
+flowchart LR
+    API["HTTP API (Gin)"] --> APP["Handlers and Middleware"]
+    APP --> UC["Use Cases"]
+    UC --> REPO["Repositories and Transactions"]
+    REPO --> DB[("PostgreSQL")]
 ```
 
-Swagger:
-- http://localhost:9898/swagger/index.html
+Dependency injection is generated with Google Wire. Business rules remain in the use-case layer, while repositories are responsible for persistence.
 
-> Port may come from your config; adjust the URL if needed.
+## Core features
 
----
+### Authentication and authorization
+
+- Register and log in users with bcrypt password hashing.
+- Issue JWT access tokens.
+- Protect application routes with Bearer-token authentication.
+- Restrict payroll administration endpoints to the `admin` role.
+
+### Attendance and payroll
+
+- Create non-overlapping attendance periods.
+- Allow one attendance submission per weekday.
+- Allow overtime submissions up to three hours per day.
+- Allow multiple reimbursements per day.
+- Run payroll once per period.
+- Lock the period after payroll has been processed.
+- Generate live payslips before payroll and snapshot-based payslips afterward.
+
+## Technology stack
+
+| Area | Technology |
+| --- | --- |
+| Language | Go 1.24.2 |
+| HTTP framework | Gin |
+| ORM and database | GORM and PostgreSQL |
+| Authentication | JWT and bcrypt |
+| Dependency injection | Google Wire |
+| API documentation | Swaggo / Swagger UI |
+| Testing | Go testing and Testify |
+| Code quality | GitHub Actions, `go test`, and `go vet` |
+
+## API overview
+
+| Method | Endpoint | Access | Purpose |
+| --- | --- | --- | --- |
+| GET | `/health-check` | Public | Service health check |
+| POST | `/v1/auth/register` | Public | Register a user |
+| POST | `/v1/auth/login` | Public | Authenticate and receive a JWT |
+| POST | `/v1/payroll/periods` | Admin | Create an attendance period |
+| POST | `/v1/payroll/periods/:period_id/run` | Admin | Run payroll for a period |
+| POST | `/v1/attendance/submit` | User/Admin | Submit attendance |
+| POST | `/v1/overtime/submit` | User/Admin | Submit overtime |
+| POST | `/v1/reimbursements` | User/Admin | Submit a reimbursement |
+| GET | `/v1/payslips/periods/:period_id` | User/Admin | Generate a payslip |
+
+The complete request and response schema is available in [Swagger JSON](docs/swagger.json) and [Swagger YAML](docs/swagger.yaml).
+
+## Run locally
+
+### Prerequisites
+
+- Go 1.24.2
+- PostgreSQL
+- OpenSSL (to generate a local JWT secret)
+
+### Setup
+
+```bash
+git clone https://github.com/thomasdarmawan9/payslip-generation-system.git
+cd payslip-generation-system
+
+createdb payslip-generation-system
+
+cp .env.example .env
+set -a
+source .env
+set +a
+
+go mod download
+go run .
+```
+
+The API starts at `http://localhost:9898`.
+
+For local development, Swagger UI is available at:
+
+```
+http://localhost:9898/swagger/index.html
+```
+
+To generate Wire and Swagger artifacts again:
+
+```bash
+go generate ./...
+```
+
+> The application runs database auto-migrations for the payroll models. Use a dedicated local database and never commit production credentials.
 
 ## Configuration
-Typical envs (adjust to your config):
-```
-appEnvMode:
-  mode: "dev"
-  testPathPrefix: "../../../"
-  debugMode: false
-  ginMode: "debug"
-  isPrettyLog: true
-  port: 9898 
-  host: "localhost"
 
-server:
-  shutdown:
-    cleanup_period_seconds: "3"
-    grace_period_seconds: "4"
-  timeout:
-    duration: "10s"
+| Variable | Required | Description |
+| --- | --- | --- |
+| `APP_MODE` | Yes | Use `dev` for local development. |
+| `DATABASE_URL` | Yes | PostgreSQL connection string. |
+| `JWT_SECRET` | Yes | Secret used to sign and validate JWTs. Use a unique value outside local development. |
 
-envLib:
-  envFile: "env/env_dev.yml"
-  envLib:
-    name: "payslip-generation-system"
-    host: "localhost"
-    port: 9898
-    version: "v1"
-  envMode: "local"
+The tracked `env/env_dev.yml` contains only a safe local fallback. Environment variables take precedence when `DATABASE_URL` and `JWT_SECRET` are provided.
 
-databaseConfig:
-  DBMysqlConfig:
-    mysql: "root:@tcp(127.0.0.1:3306)/payslip-generation-system?parseTime=true&loc=Asia%2FJakarta"
-  DBPostgresConfig:
-    postgres: "postgres://postgres:123456@localhost:5432/payslip-generation-system"
-  enableAutoMigration: true
-
-logConfig:
-  level: "info"
-  format: "pretty"
-  outputPath: "stdout"
-
-cors:
-  allowOrigins:
-    - "http://localhost:3000"
-    - "http://localhost:9898"
-  allowMethods: ["GET", "POST", "PUT", "DELETE"]
-  allowHeaders: ["Origin", "Content-Type", "Authorization"]
-  allowCredentials: true
-```
-
----
-
-## Database Schema
-The service runs **GORM AutoMigrate** for:
-- `users`
-- `attendance_periods`
-- `attendances`
-- `overtimes`
-- `reimbursements`
-- `payroll_runs`
-- `payroll_items`
-
----
-
-## API Endpoints
-
-### Auth
-- `POST /v1/auth/register` — Register new user  
-- `POST /v1/auth/login` — Login & get JWT
-
-### Attendance Periods (Admin)
-- `POST /v1/payroll/periods` — Create period  
-  Validations: `end_date >= start_date`, no overlap.
-
-### Attendance (User/Admin)
-- `POST /v1/attendance/submit` — Submit attendance for a day  
-  Rules: 1 submission/day; **weekends not allowed**.
-
-### Overtime (User/Admin)
-- `POST /v1/overtime/submit` — Submit overtime  
-  Rules: **≤ 3h/day**, any day; **if today** must be **after 17:00 WIB**; 1 record/day.
-
-### Reimbursements (User/Admin)
-- `POST /v1/reimbursements` — Create reimbursement  
-  Rules: `amount > 0`; multiple per day allowed.
-
-### Payroll (Admin)
-- `POST /v1/payroll/periods/{period_id}/run` — Run payroll **once** per period.  
-  Locks the period: later submissions for dates inside it are **rejected**.
-
-### Payslip (User/Admin)
-- `GET /v1/payslips/periods/{period_id}` — Generate payslip for that period.  
-  Uses **snapshot** if payroll already ran; otherwise **live** calculation.
-
-> All protected endpoints require `Authorization: Bearer <JWT>` header.
-
----
-
-## How to Test the APIs (cURL)
-
-Below is a typical **happy-path** sequence. Adjust dates to a weekday within your created period.
-
-> Example assumes:
-> - Base URL: `http://localhost:9898`
-> - WIB (UTC+7)
-> - Use **Aug 2025** with a weekday date example **2025-08-18** (Monday)
-
-### 0) Health Check
-```bash
-curl -i http://localhost:9898/health-check
-```
-
-### 1) Register & Login
-```bash
-# Register user
-curl -s -X POST http://localhost:9898/v1/auth/register   -H "Content-Type: application/json"   -d '{"first_name":"Budi","last_name":"User","email":"budi.user@example.com","password":"Passw0rd!","salary":7000000}'
-
-# Register admin (if register forces user, flip role directly in DB)
-curl -s -X POST http://localhost:9898/v1/auth/register   -H "Content-Type: application/json"   -d '{"first_name":"Sri","last_name":"Admin","email":"sri.admin@example.com","password":"Passw0rd!","salary":12000000,"role":"admin"}'
-```
+Generate a strong local secret with:
 
 ```bash
-# Login user
-USER_TOKEN=$(curl -s -X POST http://localhost:9898/v1/auth/login   -H "Content-Type: application/json"   -d '{"email":"budi.user@example.com","password":"Passw0rd!"}' | jq -r .token)
-
-# Login admin
-ADMIN_TOKEN=$(curl -s -X POST http://localhost:9898/v1/auth/login   -H "Content-Type: application/json"   -d '{"email":"sri.admin@example.com","password":"Passw0rd!"}' | jq -r .token)
+openssl rand -base64 32
 ```
 
-### 2) Admin: Create Attendance Period (Aug 2025)
+## Testing
+
 ```bash
-PERIOD_ID=$(curl -s -X POST http://localhost:9898/v1/payroll/periods   -H "Authorization: Bearer $ADMIN_TOKEN"   -H "Content-Type: application/json"   -d '{"name":"Payroll Aug 2025","start_date":"2025-08-01","end_date":"2025-08-31"}' | jq -r .id)
-echo $PERIOD_ID
+go test ./...
+go vet ./...
 ```
 
-### 3) User: Submit Attendance (weekday only)
-```bash
-curl -s -X POST http://localhost:9898/v1/attendance/submit   -H "Authorization: Bearer $USER_TOKEN"   -H "Content-Type: application/json"   -d '{"date":"2025-08-18"}'
+The tests focus on payroll calculations, period locking, weekend validation, idempotent submissions, and payslip behavior.
+
+## Project structure
+
+```text
+.
+├── config/              # Application, database, and router setup
+├── internal/
+│   ├── dto/             # Request and response contracts
+│   ├── handler/         # HTTP handlers
+│   ├── middleware/      # Authentication and role checks
+│   ├── model/           # Persistence models
+│   ├── repository/      # Database access and transactions
+│   └── usecase/         # Business rules and unit tests
+├── pkg/                 # Shared configuration, logging, and environment helpers
+├── transport/            # HTTP server lifecycle and Swagger setup
+├── docs/                # Generated OpenAPI documentation
+├── .env.example         # Safe local environment template
+└── postman.json         # API request collection
 ```
 
-### 4) User: Submit Overtime (≤ 3h; after 17:00 WIB if today)
-```bash
-curl -s -X POST http://localhost:9898/v1/overtime/submit   -H "Authorization: Bearer $USER_TOKEN"   -H "Content-Type: application/json"   -d '{"date":"2025-08-18","hours":2.5}'
-```
+## API workflow example
 
-### 5) User: Submit Reimbursement
-```bash
-curl -s -X POST http://localhost:9898/v1/reimbursements   -H "Authorization: Bearer $USER_TOKEN"   -H "Content-Type: application/json"   -d '{"date":"2025-08-18","amount":150000,"description":"Parking & meal"}'
-```
+1. Register and log in a user.
+2. Create an attendance period as an administrator.
+3. Submit attendance, overtime, and reimbursements.
+4. Run payroll for the period.
+5. Retrieve the generated payslip and verify that it uses the payroll snapshot.
 
-### 6) Admin: Run Payroll (Once)
-```bash
-curl -s -X POST http://localhost:9898/v1/payroll/periods/$PERIOD_ID/run   -H "Authorization: Bearer $ADMIN_TOKEN"
-```
-
-### 7) User: Generate Payslip
-```bash
-curl -s -X GET http://localhost:9898/v1/payslips/periods/$PERIOD_ID   -H "Authorization: Bearer $USER_TOKEN" | jq
-```
-
-### 8) Verify Locking (should be rejected after payroll)
-```bash
-curl -i -s -X POST http://localhost:9898/v1/attendance/submit   -H "Authorization: Bearer $USER_TOKEN" -H "Content-Type: application/json"   -d '{"date":"2025-08-18"}'
-```
-
----
-
-## Unit Tests
-
-We provide unit tests at the **usecase** layer with simple mocks.
-
-### Run tests
-```bash
-# (optional) fetch testify
-go get github.com/stretchr/testify@v1.9.0
-
-# run only usecase tests
-go test ./internal/usecase -v
-
-# or run all
-go test ./... -v
-```
-
-### Test structure (high level)
-- **Testing helpers**: `internal/usecase/testing_helpers.go`  
-  - `usecase.NewForTest()` to instantiate the usecase
-  - `usecase.InjectForTest(...)` to inject mocks
-- **Mocks** in `internal/usecase/test/`
-  - `APRepoMock` (attendance period)
-  - `ATRepoMock` (attendance)
-  - `OTRepoMock` (overtime)
-  - `RBRepoMock` (reimbursement)
-  - `PayRepoMock` (payroll)
-  - `FakeTxManager` (context-based Tx)
-- **Tests** in `internal/usecase/*.go`:
-  - `attendance_period_usecase_test.go`
-  - `attendance_usecase_test.go`
-  - `overtime_usecase_test.go`
-  - `reimbursement_usecase_test.go`
-  - `payroll_run_usecase_test.go`
-  - `payslip_usecase_test.go`
-
-> Tips:
-> - When testing attendance/overtime/reimbursement submit, inject `PayRepoMock` with `HasRunOnDateFn` returning `false` to avoid nil deref.
-> - For the “after 17:00 WIB” rule (overtime today), if you need deterministic tests, inject a clock into the usecase or test with a **past date**.
-
----
-
-## Seed 101 Users (SQL)
-
-> We’ll insert **101 users**: first is **admin**, others are **user**.  
-> All passwords are `123123123` (bcrypt), interests saved to `text[]`.
-
-**If you want bcrypt hashing**, enable `pgcrypto` first:
-```sql
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-```
-
-**Then seed:**
-```sql
--- Admin
-INSERT INTO users (
-  first_name, last_name, email, password_hash, role,
-  bio, age, google_id, interests, is_profile_complete,
-  location, profile_image_url, salary
-) VALUES (
-  'Admin', 'User', 'admin@mail.com',
-  crypt('123123123', gen_salt('bf')),
-  'admin',
-  'Admin account bio',
-  35,
-  'google-admin-1',
-  ARRAY['coding','reading','travel']::text[],
-  true,
-  'Jakarta',
-  'https://picsum.photos/200?random=1',
-  ROUND((3000000 + random() * 7000000)::numeric, 2)
-);
-
--- 100 users
-DO $$
-BEGIN
-  FOR i IN 2..101 LOOP
-    INSERT INTO users (
-      first_name, last_name, email, password_hash, role,
-      bio, age, google_id, interests, is_profile_complete,
-      location, profile_image_url, salary
-    ) VALUES (
-      'User' || i,
-      'Test' || i,
-      'user' || i || '@mail.com',
-      crypt('123123123', gen_salt('bf')),
-      'user',
-      'This is bio for user ' || i,
-      (18 + floor(random()*21))::int,      -- 18..38
-      'google-id-' || i,
-      ARRAY['coding','reading','travel']::text[],
-      true,
-      'Location ' || i,
-      'https://picsum.photos/200?random=' || i,
-      ROUND((3000000 + random() * 7000000)::numeric, 2) -- 3jt..10jt
-    );
-  END LOOP;
-END$$;
-```
-
-**If you prefer plaintext passwords (no `pgcrypto`)**, replace the `password` value with `'123123123'` in both inserts.
-
----
-
-## Troubleshooting
-
-- **`gen_salt` / `crypt` not found**  
-  Run: `CREATE EXTENSION IF NOT EXISTS pgcrypto;`
-- **`interests` jsonb vs text[]**  
-  If your `interests` column is `text[]`, insert with `ARRAY['coding',...]::text[]` (not JSON).
-- **Timeout / panic in handlers**  
-  Use a **synchronous** `processTimeout` that sets the request context and let handlers check `c.Request.Context().Err()` before writing responses.
-
----
+This project is intended for learning and portfolio review. It is not a drop-in payroll solution without additional production hardening, compliance review, and operational controls.
