@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"os"
 	"strings"
 
 	"payslip-generation-system/config"
@@ -35,22 +36,24 @@ func (au *AuthHandler) AuthJwt(c *gin.Context) {
 	}
 
 	parts := strings.SplitN(authHeader, " ", 2)
-	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") || parts[1] == "" {
+	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") || strings.TrimSpace(parts[1]) == "" {
 		utils.Failed(c, utils.CustomError(errorUc.ErrorCustom(utils.MakeError(errorUc.ErrUnauthorized))))
 		c.Abort()
 		return
 	}
-	tokenString := parts[1]
+	tokenString := strings.TrimSpace(parts[1])
 
-	// Ambil secret dari config (sesuaikan path-nya dengan config kamu)
-	secret := "" // contoh: isi di config kamu
+	secret := strings.TrimSpace(os.Getenv("JWT_SECRET"))
 	if secret == "" {
-		// fallback kalau belum diisi; tapi sebaiknya DIHAPUS untuk production
-		secret = "A7M+TXRMxdz0N3nFLjGaxVKgkELowtbxWipS+IFZkVE="
+		au.log.Error(log.LogData{
+			Description: "JWT_SECRET is not configured",
+		})
+		utils.Failed(c, utils.CustomError(errorUc.ErrorCustom(utils.MakeError(errorUc.ErrUnauthorized))))
+		c.Abort()
+		return
 	}
 
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		// pastikan HMAC
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			au.log.Error(log.LogData{Err: utils.MakeError(errorUc.ErrUnauthorized)})
 			return nil, utils.MakeError(errorUc.ErrUnauthorized)
@@ -71,7 +74,6 @@ func (au *AuthHandler) AuthJwt(c *gin.Context) {
 		return
 	}
 
-	// Ambil claims dengan aman
 	var userID uint
 	if v, ok := claims["user_id"]; ok {
 		switch t := v.(type) {
