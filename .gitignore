@@ -1,0 +1,28 @@
+# Operating system
+.DS_Store
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Go build output
+/bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Local coverage and profiling
+coverage.out
+coverage.html
+*.prof
+
+# IDE settings
+.idea/
+.vscode/
+*.swp
+*.swo
