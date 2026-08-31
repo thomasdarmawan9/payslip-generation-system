@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"fmt"
+	"os"
 	"payslip-generation-system/internal/model"
 	"payslip-generation-system/pkg/log"
 	"payslip-generation-system/utils"
@@ -92,7 +93,7 @@ func (u *usecase) RegisterUser(ctx *gin.Context, req authDTO.RegisterUserRequest
 		return nil, utils.MakeError(errorUc.InternalServerError, "failed to create user")
 	}
 
-	u.log.Info(log.LogData{Description: "user registered successfully", Response: user})
+	u.log.Info(log.LogData{Description: "user registered successfully", Response: user.Email})
 	return user, nil
 }
 
@@ -123,7 +124,7 @@ func (u *usecase) LoginUser(ctx *gin.Context, email, password string) (*model.Us
 
 	u.log.Info(log.LogData{
 		Description: fmt.Sprintf("User %s logged in successfully", user.Email),
-		Response:    user,
+		Response:    user.Email,
 	})
 
 	return user, nil
@@ -140,18 +141,27 @@ func (u *usecase) GenerateToken(userID uint, name, role string) (string, error) 
 	}
 	u.log.Info(log.LogData{
 		Description: "Token generated successfully",
-		Response:    token,
+		Response:    "token generated",
 	})
 	return token, nil
 }
 
-var jwtSecret = []byte("A7M+TXRMxdz0N3nFLjGaxVKgkELowtbxWipS+IFZkVE=") // Ganti dengan env di production
+func jwtSecretKey() ([]byte, error) {
+	secret := strings.TrimSpace(os.Getenv("JWT_SECRET"))
+	if secret == "" {
+		return nil, fmt.Errorf("JWT_SECRET is not configured")
+	}
+	return []byte(secret), nil
+}
 
 func GenerateToken(userID uint, name, role string) (string, error) {
-	// Define token expiration (e.g., 24 hours)
+	secret, err := jwtSecretKey()
+	if err != nil {
+		return "", err
+	}
+
 	expirationTime := time.Now().Add(24 * time.Hour)
 
-	// Create claims
 	claims := jwt.MapClaims{
 		"user_id": userID,
 		"name":    name,
@@ -160,11 +170,9 @@ func GenerateToken(userID uint, name, role string) (string, error) {
 		"iat":     time.Now().Unix(),
 	}
 
-	// Create token
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	// Sign token
-	tokenString, err := token.SignedString(jwtSecret)
+	tokenString, err := token.SignedString(secret)
 	if err != nil {
 		return "", err
 	}
