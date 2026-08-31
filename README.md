@@ -2,7 +2,7 @@
 
 [![Go CI](https://github.com/thomasdarmawan9/payslip-generation-system/actions/workflows/ci.yml/badge.svg)](https://github.com/thomasdarmawan9/payslip-generation-system/actions/workflows/ci.yml)
 ![Go](https://img.shields.io/badge/Go-1.24.2-00ADD8?logo=go&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL- Relational%20Database-4169E1?logo=postgresql&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)
 
 A backend service for attendance, payroll processing, and payslip generation, built as a portfolio project with Go, Gin, GORM, PostgreSQL, JWT authentication, and Google Wire dependency injection.
 
@@ -128,7 +128,7 @@ go generate ./...
 | `DATABASE_URL` | Yes | PostgreSQL connection string. |
 | `JWT_SECRET` | Yes | Secret used to sign and validate JWTs. Use a unique value outside local development. |
 
-The tracked `env/env_dev.yml` contains only a safe local fallback. Environment variables take precedence when `DATABASE_URL` and `JWT_SECRET` are provided.
+The tracked `env/env_dev.yml` contains no credentials. Provide `DATABASE_URL` and `JWT_SECRET` through the environment before starting the service.
 
 Generate a strong local secret with:
 
